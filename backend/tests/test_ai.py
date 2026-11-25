@@ -27,6 +27,7 @@ def test_cosine():
     [{'text': 'No citations.', 'source_ids': []}],
     [{'text': 'Boolean is not an ID.', 'source_ids': [True]}],
     [{'text': '', 'source_ids': [1]}],
+    ['not a paragraph object'],
 ])
 def test_invalid_ai_citations_are_rejected(monkeypatch, paragraphs):
     ai = Ollama(Settings())

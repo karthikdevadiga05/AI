@@ -30,7 +30,10 @@ class Ollama:
         try:
             response = httpx.post(self.settings.ollama_url.rstrip('/') + path, json=payload, timeout=120)
             response.raise_for_status()
-            return response.json()
+            result = response.json()
+            if not isinstance(result, dict):
+                raise ValueError('Expected an object from the model provider')
+            return result
         except (httpx.HTTPError, ValueError) as exc:
             raise AIUnavailable('The local AI model is unavailable. Check Ollama and the configured models.') from exc
 
@@ -41,10 +44,10 @@ class Ollama:
             batch = texts[start:start + 16]
             result = self.post('/api/embed', {'model': self.settings.embed_model, 'input': [prefix + t for t in batch], 'truncate': False})
             received = result.get('embeddings', [])
-            if len(received) != len(batch):
+            if not isinstance(received, list) or len(received) != len(batch):
                 raise AIUnavailable('The embedding model returned an invalid batch.')
             for vector in received:
-                if len(vector) != self.settings.embed_dim or not all(isinstance(x, (float, int)) and math.isfinite(x) for x in vector) or not any(vector):
+                if not isinstance(vector, list) or len(vector) != self.settings.embed_dim or not all(type(x) in (float, int) and math.isfinite(x) for x in vector) or not any(vector):
                     raise AIUnavailable('Embedding dimensions or values do not match the configuration.')
             vectors.extend(received)
         return vectors
@@ -74,7 +77,7 @@ class Ollama:
             if not isinstance(paragraphs, list) or not 1 <= len(paragraphs) <= 8:
                 raise ValueError()
             for p in paragraphs:
-                if not isinstance(p.get('text'), str) or not p['text'].strip() or len(p['text']) > 5000:
+                if not isinstance(p, dict) or not isinstance(p.get('text'), str) or not p['text'].strip() or len(p['text']) > 5000:
                     raise ValueError()
                 ids = p.get('source_ids')
                 if not isinstance(ids, list) or not ids or any(type(i) is not int or i not in allowed for i in ids):
