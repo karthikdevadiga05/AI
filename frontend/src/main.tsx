@@ -50,6 +50,23 @@ function Workspace({ user, mode, onLogout }: { user: User; mode: string; onLogou
   const bottom = useRef<HTMLDivElement>(null);
   const questionInput = useRef<HTMLTextAreaElement>(null);
   const busy = asking || uploading;
+  useEffect(() => {
+    if (!activeSource && !help) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    const focusable = () => Array.from(dialog?.querySelectorAll<HTMLElement>('button, a[href], iframe, input, [tabindex="0"]') || []);
+    focusable()[0]?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setActiveSource(null); setHelp(false); }
+      if (event.key === 'Tab') {
+        const items = focusable(); const first = items[0]; const last = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('keydown', onKey); previous?.focus(); };
+  }, [activeSource, help]);
   async function refresh() { const [d, h] = await Promise.all([api<Document[]>('/documents'), api<Conversation[]>('/conversations')]); setDocs(d); setHistory(h); }
   useEffect(() => { refresh().catch(e => setError(e.message)); }, []);
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [turns, asking]);

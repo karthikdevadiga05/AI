@@ -1,0 +1,45 @@
+services:
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://citewise:${POSTGRES_PASSWORD:-local-development-only}@db:5432/citewise
+      DATA_DIR: /app/data
+      AI_MODE: ${AI_MODE:-excerpt}
+      OLLAMA_URL: http://ollama:11434
+      CHAT_MODEL: ${CHAT_MODEL:-llama3.2:3b}
+      EMBED_MODEL: ${EMBED_MODEL:-nomic-embed-text}
+      EMBED_DIM: ${EMBED_DIM:-768}
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:8000}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    volumes:
+      - documents:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: citewise
+      POSTGRES_USER: citewise
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U citewise -d citewise"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+  ollama:
+    image: ollama/ollama:latest
+    profiles: [ai]
+    volumes:
+      - models:/root/.ollama
+    restart: unless-stopped
+volumes:
+  documents:
+  postgres:
+  models:
